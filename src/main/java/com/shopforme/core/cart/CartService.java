@@ -63,4 +63,9 @@ public class CartService {
         cartItemRepository.save(cartItem);
         return cart;
     }
+    public Cart getCartByUserId(Long userId) {
+        return cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found for user"));
+    }
+
 }
