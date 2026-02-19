@@ -2,6 +2,7 @@ package com.shopforme.core.cart;
 
 import com.shopforme.core.user.User;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,5 +28,22 @@ public class Cart {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-}
 
+    // ✅ REQUIRED getters & setters
+
+    public Long getId() {
+        return id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public List<CartItem> getItems() {
+        return items;
+    }
+}
