@@ -17,10 +17,14 @@ public class Product {
 
     private int quantity;
 
-    // ✅ getters & setters MUST be inside the class
+    // ✅ Getters & Setters
 
     public Long getId() {
         return id;
+    }
+
+    public String getName() {          // 🔥 THIS WAS MISSING
+        return name;
     }
 
     public BigDecimal getPrice() {

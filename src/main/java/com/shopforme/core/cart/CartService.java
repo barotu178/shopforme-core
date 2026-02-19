@@ -3,10 +3,12 @@ package com.shopforme.core.cart;
 import com.shopforme.core.product.Product;
 import com.shopforme.core.product.ProductRepository;
 import com.shopforme.core.user.User;
+import com.shopforme.core.user.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @Transactional
@@ -14,58 +16,96 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
     public CartService(
             CartRepository cartRepository,
             CartItemRepository cartItemRepository,
+            UserRepository userRepository,
             ProductRepository productRepository
     ) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
+        this.userRepository = userRepository;
         this.productRepository = productRepository;
     }
 
-    public Cart addProductToCart(Long userId, Long productId, int quantity) {
+    // ✅ ADD PRODUCT
+    public CartResponse addProductToCart(Long userId, Long productId, int quantity) {
 
-        // 1. Fetch product
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        // 2. Validate stock
-        if (product.getQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock");
-        }
-
-        // 3. Get or create cart
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    Cart newCart = new Cart();
-                    newCart.setUser(new User(userId));
-                    return cartRepository.save(newCart);
+                    Cart c = new Cart();
+                    c.setUser(user);
+                    return cartRepository.save(c);
                 });
 
-        // 4. Check if product already in cart
-        CartItem cartItem = cartItemRepository
+        CartItem item = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), productId)
                 .orElse(null);
 
-        if (cartItem == null) {
-            cartItem = new CartItem();
-            cartItem.setCart(cart);
-            cartItem.setProduct(product);
-            cartItem.setQuantity(quantity);
-            cartItem.setPriceAtAdded(product.getPrice());
+        if (item != null) {
+            item.setQuantity(item.getQuantity() + quantity);
         } else {
-            cartItem.setQuantity(cartItem.getQuantity() + quantity);
+            item = new CartItem();
+            item.setCart(cart);
+            item.setProduct(product);
+            item.setQuantity(quantity);
+            item.setPriceAtAdded(product.getPrice());
+            cartItemRepository.save(item);
         }
 
-        cartItemRepository.save(cartItem);
-        return cart;
-    }
-    public Cart getCartByUserId(Long userId) {
-        return cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found for user"));
+        return mapToResponse(cart);
     }
 
+    // ✅ VIEW CART
+    public CartResponse getCartByUserId(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        return mapToResponse(cart);
+    }
+
+    // ✅ REMOVE ITEM
+    public CartResponse removeItemFromCart(Long userId, Long productId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        cartItemRepository.deleteByCartIdAndProductId(cart.getId(), productId);
+
+        return mapToResponse(cart);
+    }
+
+    // 🔁 ENTITY → DTO MAPPER (CRITICAL)
+    private CartResponse mapToResponse(Cart cart) {
+
+        List<CartItemResponse> items = cart.getItems().stream()
+                .map(item -> new CartItemResponse(
+                        item.getProduct().getId(),
+                        item.getProduct().getName(),
+                        item.getQuantity(),
+                        item.getPriceAtAdded(),
+                        item.getPriceAtAdded()
+                                .multiply(BigDecimal.valueOf(item.getQuantity()))
+                ))
+                .toList();
+
+        BigDecimal total = items.stream()
+                .map(CartItemResponse::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new CartResponse(
+                cart.getId(),
+                cart.getUser().getId(),
+                items,
+                total
+        );
+    }
 }

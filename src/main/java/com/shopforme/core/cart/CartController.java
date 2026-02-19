@@ -13,30 +13,31 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    /**
-     * Add a product to cart
-     * Example:
-     * POST /api/cart/add?userId=1&productId=2&quantity=3
-     */
     @PostMapping("/add")
-    public ResponseEntity<Cart> addToCart(
+    public ResponseEntity<CartResponse> addToCart(
             @RequestParam Long userId,
             @RequestParam Long productId,
             @RequestParam int quantity
     ) {
-        Cart cart = cartService.addProductToCart(userId, productId, quantity);
-        return ResponseEntity.ok(cart);
+        return ResponseEntity.ok(
+                cartService.addProductToCart(userId, productId, quantity)
+        );
     }
 
-    /**
-     * View cart by user
-     * Example:
-     * GET /api/cart/view?userId=1
-     */
     @GetMapping("/view")
-    public ResponseEntity<Cart> viewCart(@RequestParam Long userId) {
-        Cart cart = cartService
-                .getCartByUserId(userId);
-        return ResponseEntity.ok(cart);
+    public ResponseEntity<CartResponse> viewCart(@RequestParam Long userId) {
+        return ResponseEntity.ok(
+                cartService.getCartByUserId(userId)
+        );
+    }
+
+    @DeleteMapping("/remove")
+    public ResponseEntity<CartResponse> removeItem(
+            @RequestParam Long userId,
+            @RequestParam Long productId
+    ) {
+        return ResponseEntity.ok(
+                cartService.removeItemFromCart(userId, productId)
+        );
     }
 }
